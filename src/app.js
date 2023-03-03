@@ -158,7 +158,13 @@ class App {
         const self = this;
 
         // TASK 1.1 Create teleports and add them to the scene
-
+        this.teleports = [];
+        locations.forEach( location => {
+            const teleport = new TeleportMesh();
+            teleport.position.copy( location );
+            self.scene.add( teleport );
+            self.teleports.push(teleport);
+        })
 
         this.setupXR();
 
@@ -215,8 +221,9 @@ class App {
         function onSelectStart() {
             this.userData.selectPressed = true;
             // TASK 1.6 On select press move to the selected teleport
-            if (false) {
-
+            if (this.userData.teleport) {
+                self.player.object.position.copy(this.userData.teleport.position);
+                self.teleports.forEach(teleport => teleport.fadeOut(0.5));
             } else if (this.userData.marker.visible) {
                 const pos = this.userData.marker.position;
                 console.log(`${pos.x.toFixed(3)}, ${pos.y.toFixed(3)}, ${pos.z.toFixed(3)}`);
@@ -230,13 +237,13 @@ class App {
         function onSqueezeStart() {
             this.userData.squeezePressed = true;
             // TASK 1.2 Display teleports when squeeze button is pressed
-
+            self.teleports.forEach(teleport => teleport.fadeIn(1));
         }
 
         function onSqueezeEnd() {
             this.userData.squeezePressed = false;
             // TASK 1.3 Hide teleports when squeeze button is released
-
+            self.teleports.forEach(teleport => teleport.fadeOut(1));
         }
 
         const btn = new VRButton(this.renderer);
@@ -252,7 +259,8 @@ class App {
 
         this.collisionObjects = [this.navmesh];
         // TASK 1.5.1 Add teleports cylinders to the collisionObjects
-
+        this.teleports.forEach(teleport =>
+            self.collisionObjects.push(teleport.children[0]));
     }
 
     intersectObjects(controller) {
@@ -283,7 +291,11 @@ class App {
                 marker.visible = true;
             }
             // TASK 1.5.2 Highlight and store intersected teleport
-
+            else if (intersect.object.parent
+                && intersect.object.parent instanceof TeleportMesh) {
+                intersect.object.parent.selected = true;
+                controller.userData.teleport = intersect.object.parent;
+            }
 
         }
 
@@ -329,7 +341,10 @@ class App {
 
         if (this.renderer.xr.isPresenting) {
             // TASK 1.4 Redraw teleports with update method
-
+            this.teleports.forEach(teleport => {
+                teleport.selected = false;
+                teleport.update();
+            });
 
             this.controllers.forEach(controller => {
                 self.intersectObjects(controller);
