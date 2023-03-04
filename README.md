@@ -39,6 +39,20 @@
 ![](docs/task_2.1.2.png)
 
 #### TASK 2.1.3 Store if object is interacting meshes
-![](docs/task_2.1.3.png)
+![](docs/task_2.1.3a.png)
+![](docs/task_2.1.3b.png)
+
+#### TASK 2.2 Update interactable meshes
+![](docs/task_2.2.png)
+
+#### TASK 2.3 Add meshes to the list of collisionObjects for selecting them by the controllers.
+![](docs/task_2.3.png)
+
+#### TASK 2.4 Add the selected interactable to the controller's userData object.
+![](docs/task_2.4.png)
+
+#### TASK 2.5 Call play for the interactable
+![](docs/task_2.5.png)
+
 
 ## Task 3. Using a controller as a weapon
