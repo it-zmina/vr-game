@@ -56,3 +56,13 @@
 
 
 ## Task 3. Using a controller as a weapon
+
+Useful link: [Link pathfinding](https://three-pathfinding.donmccurdy.com/)
+
+- Load gun with collider mesh and bullet
+- Use collider mesh to pick up the gun
+
+### Task 3.1 Install library
+```
+npm install --save three-pathfinding
+```

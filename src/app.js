@@ -2,6 +2,16 @@ import * as THREE from 'three';
 
 import venice_sunset_environment from "../assets/hdr/venice_sunset_1k.hdr"
 import dungeon from "../assets/dungeon.glb"
+// TASK 3.? Link GLB-files with ghoul and gun models
+import ghoulModel from "../assets/ghoul.glb"
+import gunModel from "../assets/flare-gun.glb"
+
+// TASK 3.? Link MP3-files with audio
+import ambient from "../assets/sfx/ambient.mp3"
+import shot from "../assets/sfx/shot.mp3"
+import snarl from "../assets/sfx/snarl.mp3"
+import swish from "../assets/sfx/swish.mp3"
+
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader";
 import {DRACOLoader} from "three/addons/loaders/DRACOLoader";
 import {RGBELoader} from "three/addons/loaders/RGBELoader";
@@ -12,8 +22,19 @@ import {Player} from "./models/Player";
 import {XRControllerModelFactory} from "three/addons/webxr/XRControllerModelFactory";
 import {TeleportMesh} from "./models/TeleportMesh";
 import {Interactable} from "./utils/Interactable";
+import {Pathfinding} from "three-pathfinding";
+import {Bullet} from "./models/Bullet";
+
+const soundFiles = {
+     ambient: ambient,
+     shot: shot,
+     snarl: snarl,
+     swish: swish
+}
 
 class App {
+    // TASK 3.? Link sound files with audio names
+
     constructor() {
         const container = document.createElement('div');
         document.body.appendChild(container);
@@ -40,6 +61,9 @@ class App {
 
         this.sun.position.set(0, 10, 10);
         this.scene.add(this.sun);
+
+        // TASK 3.? Configure debug options
+        this.debug = { showPath:false, teleport: true };
 
         this.renderer = new THREE.WebGLRenderer({antialias: true});
         this.renderer.setPixelRatio(window.devicePixelRatio);
@@ -100,6 +124,8 @@ class App {
 
         // TASK 2.1.1 Create empty array for storing interacting meshes
         this.interactables = [];
+        // TASK 3.? Create empty array for
+        this.markables = [];
 
         const self = this;
 
@@ -120,6 +146,9 @@ class App {
                             self.navmesh = child;
                             child.geometry.scale(scale, scale, scale);
                             child.scale.set(2, 2, 2);
+                        // TASK 3.? Store markable mesh (chest)
+                        } else if (child.name == "SD_Prop_Chest_Skull_01") {
+                            self.markables.push(child);
                         } else {
                             // TASK 2.1.2 Check if mesh is interacting
                             self.storeIfInteractingMesh.bind(self, child).call()
@@ -131,7 +160,10 @@ class App {
 
                 gltf.scene.scale.set(scale, scale, scale);
 
-                self.initGame();
+                // TASK 3.? Load other assets
+                self.initPathfinding();
+                self.loadGhoul();
+                // self.initGame();
             },
             // called while loading is progressing
             function (xhr) {
@@ -181,6 +213,279 @@ class App {
         }
     }
 
+    loadGhoul() {
+        const loader = new GLTFLoader()
+        // Provide a DRACOLoader instance to decode compressed mesh data
+        const draco = new DRACOLoader()
+        draco.setDecoderPath('draco/')
+        loader.setDRACOLoader(draco)
+
+        const self = this;
+
+        const anims = [
+            {start: 81, end: 161, name: "idle", loop: true},
+            {start: 250, end: 290, name: "block", loop: false},
+            {start: 300, end: 320, name: "gethit", loop: false},
+            {start: 340, end: 375, name: "die", loop: false},
+            {start: 380, end: 430, name: "attack", loop: false},
+            {start: 470, end: 500, name: "walk", loop: true},
+            {start: 540, end: 560, name: "run", loop: true}
+        ];
+
+        // Load a GLTF resource
+        loader.load(
+            // resource URL
+            ghoulModel,
+            // called when the resource is loaded
+            function (gltf) {
+                const gltfs = [gltf];
+                for (let i = 0; i < 3; i++) gltfs.push(self.cloneGLTF(gltf));
+
+                self.ghouls = [];
+
+                gltfs.forEach(function (gltf) {
+                    const object = gltf.scene.children[0];
+
+                    object.traverse(function (child) {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                        }
+                    });
+
+                    const options = {
+                        object: object,
+                        speed: 0.8,
+                        assetsPath: self.assetsPath,
+                        loader: loader,
+                        anims: anims,
+                        clip: gltf.animations[0],
+                        app: self,
+                        name: 'ghoul',
+                        npc: true
+                    };
+
+                    const ghoul = new Player(options);
+
+                    const scale = 0.01;
+                    ghoul.object.scale.set(scale, scale, scale);
+
+                    ghoul.object.position.copy(self.randomWaypoint);
+                    ghoul.newPath(self.randomWaypoint);
+
+                    self.ghouls.push(ghoul);
+
+                });
+
+                self.loadGun();
+            },
+            // called while loading is progressing
+            function (xhr) {
+
+                self.loadingBar.progress = (xhr.loaded / xhr.total) * 0.33 + 0.33;
+
+            },
+            // called when loading has errors
+            function (error) {
+
+                console.error(error.message);
+
+            }
+        );
+    }
+
+    cloneGLTF(gltf) {
+
+        const clone = {
+            animations: gltf.animations,
+            scene: gltf.scene.clone(true)
+        };
+
+        const skinnedMeshes = {};
+
+        gltf.scene.traverse(node => {
+            if (node.isSkinnedMesh) {
+                skinnedMeshes[node.name] = node;
+            }
+        });
+
+        const cloneBones = {};
+        const cloneSkinnedMeshes = {};
+
+        clone.scene.traverse(node => {
+            if (node.isBone) {
+                cloneBones[node.name] = node;
+            }
+            if (node.isSkinnedMesh) {
+                cloneSkinnedMeshes[node.name] = node;
+            }
+        });
+
+        for (let name in skinnedMeshes) {
+            const skinnedMesh = skinnedMeshes[name];
+            const skeleton = skinnedMesh.skeleton;
+            const cloneSkinnedMesh = cloneSkinnedMeshes[name];
+            const orderedCloneBones = [];
+            for (let i = 0; i < skeleton.bones.length; ++i) {
+                const cloneBone = cloneBones[skeleton.bones[i].name];
+                orderedCloneBones.push(cloneBone);
+            }
+            cloneSkinnedMesh.bind(
+                new THREE.Skeleton(orderedCloneBones, skeleton.boneInverses),
+                cloneSkinnedMesh.matrixWorld);
+        }
+
+        return clone;
+
+    }
+
+    loadGun() {
+        const loader = new GLTFLoader()
+        // Provide a DRACOLoader instance to decode compressed mesh data
+        const draco = new DRACOLoader()
+        draco.setDecoderPath('draco/')
+        loader.setDRACOLoader(draco)
+
+        const self = this;
+
+        // Load a GLTF resource
+        loader.load(
+            // resource URL
+            gunModel,
+            // called when the resource is loaded
+            function (gltf) {
+                self.gun = gltf.scene;
+                self.gun.position.set(-0.430, 0.877, 3.013);
+                self.gun.rotateX(Math.PI / 2);
+                self.scene.add(self.gun);
+
+                const bullet = gltf.scene.getObjectByName("Bullet");
+                self.scene.add(bullet);
+
+                const targets = [];
+                self.ghouls.forEach(ghoul => targets.push(ghoul.object.children[1]));
+
+                self.bullet = new Bullet(bullet, {
+                    gun: self.gun,
+                    targets
+                });
+
+                self.bullet.addEventListener('hit', ev => {
+                    const tmp = self.ghouls.filter(ghoul => ev.hitObject == ghoul.object.children[1]);
+                    if (tmp.length > 0) {
+                        self.sounds.snarl.play();
+                        const ghoul = tmp[0];
+                        ghoul.action = 'die';
+                        ghoul.dead = true;
+                        ghoul.calculatedPath = null;
+                        ghoul.curAction.loop = THREE.LoopOnce;
+                        ghoul.curAction.clampWhenFinished = true;
+                        ghoul.mixer.addEventListener('finished', (e) => {
+                            self.scene.remove(ghoul.object);
+                            self.ghouls.splice(self.ghouls.indexOf(ghoul), 1);
+                        });
+                    }
+                });
+
+                self.initGame();
+            },
+            // called while loading is progressing
+            function (xhr) {
+
+                self.loadingBar.progress = (xhr.loaded / xhr.total) * 0.33 + 0.66;
+
+            },
+            // called when loading has errors
+            function (error) {
+
+                console.error(error.message);
+
+            }
+        );
+    }
+
+    loadAudio() {
+
+        if (this.audioListener === undefined) {
+            this.audioListener = new THREE.AudioListener();
+            // add the listener to the camera
+            this.camera.add(this.audioListener);
+            this.sounds = {};
+
+            this.audio = {
+                index: 0,
+                names: Object.keys(soundFiles)
+            }
+        }
+
+        const name = this.audio.names[this.audio.index];
+
+        const loader = new THREE.AudioLoader();
+        const self = this;
+
+        // load a resource
+        loader.load(
+            // resource URL
+            soundFiles[name],
+
+            // onLoad callback
+            function (audioBuffer) {
+                // set the audio object buffer to the loaded object
+                let snd;
+                if (name === 'snarl') {
+                    snd = new THREE.PositionalAudio(self.audioListener);
+                } else {
+                    snd = new THREE.Audio(self.audioListener);
+                    self.scene.add(snd);
+                    if (name === 'ambient') {
+                        snd.setLoop(true);
+                        snd.setVolume(0.5);
+                    }
+                }
+                snd.setBuffer(audioBuffer);
+
+                // play the audio
+                if (name === 'ambient') snd.play();
+
+                self.sounds[name] = snd;
+
+                self.audio.index++;
+
+                if (self.audio.index < self.audio.names.length) {
+                    self.loadAudio();
+                }
+            },
+
+            // onProgress callback
+            function (xhr) {
+                const peraudio = 0.25 / self.audio.length;
+                self.loadingBar.progress = ((xhr.loaded / xhr.total) + self.audio.index) * peraudio + 0.75;
+            },
+
+            // onError callback
+            function (err) {
+                console.log('An error happened');
+            }
+        );
+    }
+
+    get randomWaypoint() {
+        const index = Math.floor(Math.random() * this.waypoints.length);
+        return this.waypoints[index];
+    }
+
+    initPathfinding() {
+        this.waypoints = [
+            new THREE.Vector3(8.689, 2.687, 0.349),
+            new THREE.Vector3(0.552, 2.589, -2.122),
+            new THREE.Vector3(-7.722, 2.630, 0.298),
+            new THREE.Vector3(2.238, 2.728, 7.050),
+            new THREE.Vector3(2.318, 2.699, 6.957),
+            new THREE.Vector3(-1.837, 0.111, 1.782)
+        ];
+        this.pathfinder = new Pathfinding();
+        this.ZONE = 'dungeon';
+        this.pathfinder.setZoneData(this.ZONE, Pathfinding.createZone(this.navmesh.geometry));
+    }
 
     initGame() {
         this.player = this.createPlayer();
@@ -248,6 +553,8 @@ class App {
             const grip = this.renderer.xr.getControllerGrip(i);
             grip.add(controllerModelFactory.createControllerModel(grip));
             this.dolly.add(grip);
+            // TASK 3.? Store grip model to the controller
+            controller.userData.grip = grip;
         }
 
         return controllers;
@@ -260,10 +567,19 @@ class App {
 
         function onSelectStart() {
             this.userData.selectPressed = true;
+            // TASK 3.? Shout if controller is with the gun model
+            if (this.userData.gun){
+                self.sounds.shot.play();
+                self.bullet.fire();
+            } else
+
             // TASK 1.6 On select press move to the selected teleport
             if (this.userData.teleport) {
                 self.player.object.position.copy(this.userData.teleport.position);
                 self.teleports.forEach(teleport => teleport.fadeOut(0.5));
+                // TASK 3.? Add teleportation sound
+                self.sounds.swish.play();
+                this.userData.teleport.visible = false
             }
             // TASK 2.5 Call play for the interactable
             else if (this.userData.interactable) {
@@ -292,7 +608,12 @@ class App {
             self.teleports.forEach(teleport => teleport.fadeOut(1));
         }
 
-        const btn = new VRButton(this.renderer);
+        // TASK 3.? Load audio after entering VR mode
+        function onSessionStart(){
+            if (self.sounds === undefined ) self.loadAudio();
+        }
+
+        const btn = new VRButton(this.renderer, { onSessionStart });
 
         this.controllers = this.buildControllers();
 
@@ -310,7 +631,24 @@ class App {
 
         // TASK 2.3 Add meshes to the list of collisionObjects for selecting them by the controllers.
         this.interactables.forEach( interactable => self.collisionObjects.push( interactable.mesh ));
+        // TASK 3.? Add chest and gun collider to collision objects
+        this.markables.forEach( markable => self.collisionObjects.push( markable ));
 
+        const gunCollider = this.gun.getObjectByName( 'Collider' );
+        gunCollider.material.visible = false;
+        this.collisionObjects.push( gunCollider );
+    }
+
+    // TASK 3.? Change controller model
+    pickupGun( controller = this.controllers[0] ){
+        this.gun.position.set(0,0,0);
+        this.gun.quaternion.identity();
+        //this.gun.rotateY( -Math.PI/2 )
+        controller.children[0].visible = false;
+        controller.add( this.gun );
+        controller.userData.gun = true;
+        const grip = controller.userData.grip;
+        this.dolly.remove( grip );
     }
 
     intersectObjects(controller) {
@@ -334,11 +672,17 @@ class App {
 
             const intersect = intersects[0];
             line.scale.z = intersect.distance;
+            // TASK 3.? Check if intersect markable object
+            const markable = (this.markables.indexOf(intersect.object) != -1);
 
-            if (intersect.object === this.navmesh) {
+            if (intersect.object === this.navmesh || markable) {
                 marker.scale.set(1, 1, 1);
                 marker.position.copy(intersect.point);
                 marker.visible = true;
+            }
+            // TASK 3.? Pick up gun if marker on gun collider
+            else if (intersect.object.parent === this.gun) {
+                this.pickupGun(controller);
             }
             // TASK 1.5.2 Highlight and store intersected teleport
             else if (intersect.object.parent
@@ -405,13 +749,20 @@ class App {
             });
 
             this.controllers.forEach(controller => {
-                self.intersectObjects(controller);
+                // TASK 3.? Disable selecting by controller with gun
+                if (!controller.userData.gun) {
+                    self.intersectObjects(controller);
+                }
             })
 
             // TASK 2.2 Update interactable meshes
             this.interactables.forEach(interactable => interactable.update(dt));
 
             this.player.update(dt);
+            // TASK 3.? Update ghouls and bullet models
+            this.ghouls.forEach( ghoul => { ghoul.update(dt) });
+
+            this.bullet.update(dt);
         }
 
         this.renderer.render(this.scene, this.camera);
