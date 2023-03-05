@@ -24,6 +24,7 @@ import {TeleportMesh} from "./models/TeleportMesh";
 import {Interactable} from "./utils/Interactable";
 import {Pathfinding} from "three-pathfinding";
 import {Bullet} from "./models/Bullet";
+import {cloneGLTF} from "./utils/loaderUtils";
 
 const soundFiles = {
      ambient: ambient,
@@ -239,7 +240,7 @@ class App {
             // called when the resource is loaded
             function (gltf) {
                 const gltfs = [gltf];
-                for (let i = 0; i < 3; i++) gltfs.push(self.cloneGLTF(gltf));
+                for (let i = 0; i < 3; i++) gltfs.push(cloneGLTF(gltf));
 
                 self.ghouls = [];
 
@@ -293,51 +294,6 @@ class App {
         );
     }
 
-    cloneGLTF(gltf) {
-
-        const clone = {
-            animations: gltf.animations,
-            scene: gltf.scene.clone(true)
-        };
-
-        const skinnedMeshes = {};
-
-        gltf.scene.traverse(node => {
-            if (node.isSkinnedMesh) {
-                skinnedMeshes[node.name] = node;
-            }
-        });
-
-        const cloneBones = {};
-        const cloneSkinnedMeshes = {};
-
-        clone.scene.traverse(node => {
-            if (node.isBone) {
-                cloneBones[node.name] = node;
-            }
-            if (node.isSkinnedMesh) {
-                cloneSkinnedMeshes[node.name] = node;
-            }
-        });
-
-        for (let name in skinnedMeshes) {
-            const skinnedMesh = skinnedMeshes[name];
-            const skeleton = skinnedMesh.skeleton;
-            const cloneSkinnedMesh = cloneSkinnedMeshes[name];
-            const orderedCloneBones = [];
-            for (let i = 0; i < skeleton.bones.length; ++i) {
-                const cloneBone = cloneBones[skeleton.bones[i].name];
-                orderedCloneBones.push(cloneBone);
-            }
-            cloneSkinnedMesh.bind(
-                new THREE.Skeleton(orderedCloneBones, skeleton.boneInverses),
-                cloneSkinnedMesh.matrixWorld);
-        }
-
-        return clone;
-
-    }
-
     loadGun() {
         const loader = new GLTFLoader()
         // Provide a DRACOLoader instance to decode compressed mesh data
@@ -370,7 +326,8 @@ class App {
                 });
 
                 self.bullet.addEventListener('hit', ev => {
-                    const tmp = self.ghouls.filter(ghoul => ev.hitObject == ghoul.object.children[1]);
+                    const tmp = self.ghouls.filter(ghoul =>
+                        ev.hitObject == ghoul.object.children[1]);
                     if (tmp.length > 0) {
                         self.sounds.snarl.play();
                         const ghoul = tmp[0];
@@ -609,8 +566,8 @@ class App {
         }
 
         // TASK 3.? Load audio after entering VR mode
-        function onSessionStart(){
-            if (self.sounds === undefined ) self.loadAudio();
+        function onSessionStart() {
+            if (self.sounds === undefined) self.loadAudio();
         }
 
         const btn = new VRButton(this.renderer, { onSessionStart });
@@ -640,15 +597,15 @@ class App {
     }
 
     // TASK 3.? Change controller model
-    pickupGun( controller = this.controllers[0] ){
-        this.gun.position.set(0,0,0);
+    pickupGun(controller = this.controllers[0]) {
+        this.gun.position.set(0, 0, 0);
         this.gun.quaternion.identity();
         //this.gun.rotateY( -Math.PI/2 )
         controller.children[0].visible = false;
-        controller.add( this.gun );
+        controller.add(this.gun);
         controller.userData.gun = true;
         const grip = controller.userData.grip;
-        this.dolly.remove( grip );
+        this.dolly.remove(grip);
     }
 
     intersectObjects(controller) {
