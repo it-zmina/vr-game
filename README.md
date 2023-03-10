@@ -66,3 +66,21 @@ Useful link: [Link pathfinding](https://three-pathfinding.donmccurdy.com/)
 ```
 npm install --save three-pathfinding
 ```
+
+### Task 4. Ideas for extensions
+
+#### Resources
+
+Models:
+
+- https://kenney.nl/assets?q=3d
+
+Audio:
+
+- https://kenney.nl/assets?q=3d
+- https://quaternius.com
+- https://www.cgtrader.com/
+- https://www.turbosquid.com/
+- https://free3d.com/3d-models/
+- https://www.mixamo.com/
+- 

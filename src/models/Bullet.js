@@ -55,6 +55,7 @@ class Bullet extends EventDispatcher {
                 console.log(`intersect.distance:${intersect.distance.toFixed(3)} dist:${dist.toFixed(3)}`);
 
                 if (intersect.distance < dist) {
+                    console.debug(`hit event distance: ${intersect.distance}`)
                     //We have a hit so remove this from the targets array, so we can't hit it again
                     const index = this.targets.indexOf(intersect.object);
                     this.targets.splice(index, 1);

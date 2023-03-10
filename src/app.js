@@ -24,7 +24,7 @@ import {TeleportMesh} from "./models/TeleportMesh";
 import {Interactable} from "./utils/Interactable";
 import {Pathfinding} from "three-pathfinding";
 import {Bullet} from "./models/Bullet";
-import {cloneGLTF} from "./utils/loaderUtils";
+import {cloneGLTF, getGltfLoader, getLoader} from "./utils/loaderUtils";
 
 const soundFiles = {
      ambient: ambient,
@@ -38,6 +38,9 @@ class App {
 
     constructor() {
         const container = document.createElement('div');
+        container.style.position = 'fixed'
+        container.style.top = '0px'
+        container.style.left = '0px'
         document.body.appendChild(container);
 
         this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 3000);
@@ -85,7 +88,7 @@ class App {
 
         this.loading = true;
 
-        window.addEventListener('resize', this.render.bind(this));
+        window.addEventListener('resize', this.resize.bind(this));
     }
 
     resize() {
@@ -114,12 +117,8 @@ class App {
     }
 
     loadEnvironment() {
+        const loader = getGltfLoader()
 
-        const loader = new GLTFLoader()
-        // Provide a DRACOLoader instance to decode compressed mesh data
-        const draco = new DRACOLoader()
-        draco.setDecoderPath('draco/')
-        loader.setDRACOLoader(draco)
         // Prepare loading bar
         this.loadingBar = new LoadingBar(loader);
 
@@ -215,11 +214,7 @@ class App {
     }
 
     loadGhoul() {
-        const loader = new GLTFLoader()
-        // Provide a DRACOLoader instance to decode compressed mesh data
-        const draco = new DRACOLoader()
-        draco.setDecoderPath('draco/')
-        loader.setDRACOLoader(draco)
+        const loader = getGltfLoader()
 
         const self = this;
 
@@ -295,12 +290,7 @@ class App {
     }
 
     loadGun() {
-        const loader = new GLTFLoader()
-        // Provide a DRACOLoader instance to decode compressed mesh data
-        const draco = new DRACOLoader()
-        draco.setDecoderPath('draco/')
-        loader.setDRACOLoader(draco)
-
+        const loader = getGltfLoader()
         const self = this;
 
         // Load a GLTF resource
@@ -525,7 +515,7 @@ class App {
         function onSelectStart() {
             this.userData.selectPressed = true;
             // TASK 3.? Shout if controller is with the gun model
-            if (this.userData.gun){
+            if (this.userData.gun && !self.bullet.firing){
                 self.sounds.shot.play();
                 self.bullet.fire();
             } else

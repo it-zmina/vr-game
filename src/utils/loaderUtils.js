@@ -1,4 +1,16 @@
 import * as THREE from "three";
+import {GLTFLoader} from "three/addons/loaders/GLTFLoader";
+import {DRACOLoader} from "three/addons/loaders/DRACOLoader";
+
+export function getGltfLoader() {
+    const loader = new GLTFLoader()
+    // Provide a DRACOLoader instance to decode compressed mesh data
+    const draco = new DRACOLoader()
+    draco.setDecoderPath('draco/')
+    loader.setDRACOLoader(draco)
+
+    return loader
+}
 
 export function cloneGLTF(gltf) {
 
