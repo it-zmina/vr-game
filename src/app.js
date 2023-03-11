@@ -2,12 +2,13 @@ import * as THREE from 'three';
 
 import venice_sunset_environment from "../assets/hdr/venice_sunset_1k.hdr"
 import dungeon from "../assets/dungeon.glb"
-// TASK 3.? Link GLB-files with ghoul and gun models
+// TASK 3.2 Link GLB-files with ghoul and gun models
 import ghoulModel from "../assets/ghoul.glb"
 import gunModel from "../assets/flare-gun.glb"
 
-// TASK 3.? Link MP3-files with audio
+// TASK 3.3 Link MP3-files with sound effects
 import ambient from "../assets/sfx/ambient.mp3"
+
 import shot from "../assets/sfx/shot.mp3"
 import snarl from "../assets/sfx/snarl.mp3"
 import swish from "../assets/sfx/swish.mp3"
@@ -34,7 +35,6 @@ const soundFiles = {
 }
 
 class App {
-    // TASK 3.? Link sound files with audio names
 
     constructor() {
         const container = document.createElement('div');
@@ -66,8 +66,8 @@ class App {
         this.sun.position.set(0, 10, 10);
         this.scene.add(this.sun);
 
-        // TASK 3.? Configure debug options
-        this.debug = { showPath:false, teleport: true };
+        // TASK 3.3 Configure debug options
+        this.debug = {showPath: false, teleport: true};
 
         this.renderer = new THREE.WebGLRenderer({antialias: true});
         this.renderer.setPixelRatio(window.devicePixelRatio);
@@ -124,7 +124,7 @@ class App {
 
         // TASK 2.1.1 Create empty array for storing interacting meshes
         this.interactables = [];
-        // TASK 3.? Create empty array for
+        // TASK 3.5 Create empty array for markables models
         this.markables = [];
 
         const self = this;
@@ -146,7 +146,7 @@ class App {
                             self.navmesh = child;
                             child.geometry.scale(scale, scale, scale);
                             child.scale.set(2, 2, 2);
-                        // TASK 3.? Store markable mesh (chest)
+                        // TASK 3.6 Store markable mesh (chest)
                         } else if (child.name == "SD_Prop_Chest_Skull_01") {
                             self.markables.push(child);
                         } else {
@@ -160,7 +160,7 @@ class App {
 
                 gltf.scene.scale.set(scale, scale, scale);
 
-                // TASK 3.? Load other assets
+                // TASK 3.7 Load all assets
                 self.initPathfinding();
                 self.loadGhoul();
                 // self.initGame();
@@ -213,6 +213,7 @@ class App {
         }
     }
 
+    // TASK 3.8 Load ghoul, gun models and sound effects
     loadGhoul() {
         const loader = getGltfLoader()
 
@@ -415,6 +416,7 @@ class App {
         );
     }
 
+    // TASK 3.9 Init path finding
     get randomWaypoint() {
         const index = Math.floor(Math.random() * this.waypoints.length);
         return this.waypoints[index];
@@ -500,7 +502,7 @@ class App {
             const grip = this.renderer.xr.getControllerGrip(i);
             grip.add(controllerModelFactory.createControllerModel(grip));
             this.dolly.add(grip);
-            // TASK 3.? Store grip model to the controller
+            // TASK 3.10 Store grip model to the controller
             controller.userData.grip = grip;
         }
 
@@ -514,7 +516,7 @@ class App {
 
         function onSelectStart() {
             this.userData.selectPressed = true;
-            // TASK 3.? Shout if controller is with the gun model
+            // TASK 3.11 Shout if controller is with the gun model
             if (this.userData.gun && !self.bullet.firing){
                 self.sounds.shot.play();
                 self.bullet.fire();
@@ -524,7 +526,7 @@ class App {
             if (this.userData.teleport) {
                 self.player.object.position.copy(this.userData.teleport.position);
                 self.teleports.forEach(teleport => teleport.fadeOut(0.5));
-                // TASK 3.? Add teleportation sound
+                // TASK 3.12 Add teleportation sound
                 self.sounds.swish.play();
                 this.userData.teleport.visible = false
             }
@@ -555,7 +557,7 @@ class App {
             self.teleports.forEach(teleport => teleport.fadeOut(1));
         }
 
-        // TASK 3.? Load audio after entering VR mode
+        // TASK 3.13 Load audio after entering VR mode
         function onSessionStart() {
             if (self.sounds === undefined) self.loadAudio();
         }
@@ -578,7 +580,7 @@ class App {
 
         // TASK 2.3 Add meshes to the list of collisionObjects for selecting them by the controllers.
         this.interactables.forEach( interactable => self.collisionObjects.push( interactable.mesh ));
-        // TASK 3.? Add chest and gun collider to collision objects
+        // TASK 3.14 Add chest and gun collider to collision objects
         this.markables.forEach( markable => self.collisionObjects.push( markable ));
 
         const gunCollider = this.gun.getObjectByName( 'Collider' );
@@ -586,7 +588,7 @@ class App {
         this.collisionObjects.push( gunCollider );
     }
 
-    // TASK 3.? Change controller model
+    // TASK 3.15 Change controller model
     pickupGun(controller = this.controllers[0]) {
         this.gun.position.set(0, 0, 0);
         this.gun.quaternion.identity();
@@ -619,7 +621,7 @@ class App {
 
             const intersect = intersects[0];
             line.scale.z = intersect.distance;
-            // TASK 3.? Check if intersect markable object
+            // TASK 3.16 Check if intersect markable object
             const markable = (this.markables.indexOf(intersect.object) != -1);
 
             if (intersect.object === this.navmesh || markable) {
@@ -627,7 +629,7 @@ class App {
                 marker.position.copy(intersect.point);
                 marker.visible = true;
             }
-            // TASK 3.? Pick up gun if marker on gun collider
+            // TASK 3.17 Pick up gun if marker on gun collider
             else if (intersect.object.parent === this.gun) {
                 this.pickupGun(controller);
             }
@@ -696,7 +698,7 @@ class App {
             });
 
             this.controllers.forEach(controller => {
-                // TASK 3.? Disable selecting by controller with gun
+                // TASK 3.18 Disable selecting by controller with gun
                 if (!controller.userData.gun) {
                     self.intersectObjects(controller);
                 }
@@ -706,7 +708,7 @@ class App {
             this.interactables.forEach(interactable => interactable.update(dt));
 
             this.player.update(dt);
-            // TASK 3.? Update ghouls and bullet models
+            // TASK 3.19 Update ghouls and bullet models
             this.ghouls.forEach( ghoul => { ghoul.update(dt) });
 
             this.bullet.update(dt);
