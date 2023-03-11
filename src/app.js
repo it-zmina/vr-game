@@ -66,7 +66,7 @@ class App {
         this.sun.position.set(0, 10, 10);
         this.scene.add(this.sun);
 
-        // TASK 3.3 Configure debug options
+        // TASK 3.4 Configure debug options
         this.debug = {showPath: false, teleport: true};
 
         this.renderer = new THREE.WebGLRenderer({antialias: true});

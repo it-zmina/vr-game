@@ -69,10 +69,20 @@ npm install --save three-pathfinding
 
 ### Task 3.2 Link GLB-files with ghoul and gun models
 ### Task 3.3 Link MP3-files with sound effects
+![](docs/task3.2.png)
 ### Task 3.4 Configure debug options
-
+```aidl
+        // TASK 3.4 Configure debug options
+        this.debug = {showPath: false, teleport: true};
+```
 ### Task 3.5 Create empty array for markables models
+```aidl
+        // TASK 3.5 Create empty array for markables models
+        this.markables = [];
+```
 ### Task 3.6 Store markable mesh (chest)
+![](docs/task3.6.png)
+
 ### Task 3.7 Load all assets
 ![](docs/task3.7.png)
 ### Task 3.8 Load ghoul, gun models and sound effects
